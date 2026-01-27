@@ -137,7 +137,7 @@ class Target:
                         ],
                     ),
                     kwargs={"stdout": devnull, "stderr": devnull},
-                )
+                ).start()
 
                 threading.Thread(
                     target=subprocess.run,
