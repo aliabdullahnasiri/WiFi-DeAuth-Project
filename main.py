@@ -7,16 +7,14 @@ from typing import Any
 
 import click
 from rich.console import Console
+from rich.traceback import install
 
 from logger import logger
-
-# from rich.traceback import install
-
 
 console: Console = Console()
 
 
-# install()
+install()
 
 
 devnull = open(os.devnull, "wt")
