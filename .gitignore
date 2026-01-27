@@ -1,2 +1,4 @@
 client.deny
 client.allow
+
+.log
