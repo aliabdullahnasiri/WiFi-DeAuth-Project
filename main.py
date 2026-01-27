@@ -6,16 +6,8 @@ from time import sleep
 from typing import Any, Literal
 
 import click
-from rich.console import Console
-from rich.traceback import install
 
 from logger import logger
-
-console: Console = Console()
-
-
-install()
-
 
 devnull = open(os.devnull, "wt")
 
