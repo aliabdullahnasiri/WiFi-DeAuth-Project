@@ -13,7 +13,6 @@ devnull = open(os.devnull, "wt")
 
 
 def change_interface_status(interface: str, status: Literal["up", "down"]):
-    logger.info(f"Make the interface {interface!r} {status}.")
     p = subprocess.run(
         ["sudo", "ip", "link", "set", interface, f"{status}"],
         stderr=devnull,
@@ -26,7 +25,6 @@ def change_interface_status(interface: str, status: Literal["up", "down"]):
 def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
     change_interface_status(_interface, "down")
 
-    logger.info(f"Change the {interface} type to {_type}.")
     p = subprocess.run(
         ["sudo", "iw", "dev", interface, "set", "type", f"{_type}"],
         stderr=devnull,
@@ -39,7 +37,7 @@ def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
 
 def change_interface_channel(interface: str, channel: int):
     change_interface_status(interface, "up")
-    logger.info(f"Change the channel to <cyan>{channel!r}</cyan>.")
+
     p = subprocess.run(
         [
             "sudo",
@@ -210,7 +208,7 @@ def refresh():
                 logger.info(f"Sleep {_interval} for seconds.")
                 sleep(_interval)
 
-        sleep(2.5)
+        sleep(30)
 
 
 @click.command()
