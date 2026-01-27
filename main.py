@@ -21,27 +21,49 @@ devnull = open(os.devnull, "wt")
 
 
 def change_interface_status(interface: str, status: Literal["up", "down"]):
-    logger.info(f"Make the interface {interface!r} {status}.")
     p = subprocess.run(
-        ["sudo", "ip", "link", "set", interface, f"{status}"],
-        stderr=devnull,
-        stdout=devnull,
+        ["sudo", "ip", "link", "show", "dev", f"{interface}"],
+        capture_output=True,
+        text=True,
+        check=False,
     )
 
-    return p.returncode
+    if status.upper() not in p.stdout:
+        logger.info(f"Make the interface {interface!r} {status}.")
+        p = subprocess.run(
+            ["sudo", "ip", "link", "set", interface, f"{status}"],
+            stderr=devnull,
+            stdout=devnull,
+        )
+
+        return p.returncode
+
+    return 0
 
 
 def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
     change_interface_status(_interface, "down")
-    logger.info(f"Change the {interface} type to {_type}.")
-    p = subprocess.run(
-        ["sudo", "iw", "dev", interface, "set", "type", f"{_type}"],
-        stderr=devnull,
-        stdout=devnull,
-    )
-    change_interface_status(_interface, "up")
 
-    return p.returncode
+    if (
+        _type
+        in subprocess.run(
+            ["sudo", "iw", "dev", f"{interface}", "info"],
+            capture_output=True,
+            text=True,
+            check=False,
+        ).stdout
+    ):
+        logger.info(f"Change the {interface} type to {_type}.")
+        p = subprocess.run(
+            ["sudo", "iw", "dev", interface, "set", "type", f"{_type}"],
+            stderr=devnull,
+            stdout=devnull,
+        )
+        change_interface_status(_interface, "up")
+
+        return p.returncode
+
+    return 0
 
 
 def change_interface_channel(interface: str, channel: int):
