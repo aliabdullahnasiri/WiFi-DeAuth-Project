@@ -162,7 +162,7 @@ def refresh():
 
 @click.command()
 @click.option("--bssid", type=str, required=True, help="Specify the target BSSID.")
-@click.option("--interval", type=int, default=30)
+@click.option("--interval", type=int, default=60)
 @click.option("--mdk3-a-mode", default=False)
 @click.option("--mdk3-d-mode", default=True)
 @click.argument("interface_managed")
