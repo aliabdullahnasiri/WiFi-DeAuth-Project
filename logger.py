@@ -9,7 +9,7 @@ format = (
 )
 
 logger.remove()
-logger.add(".log", format=format, mode="a+", colorize=True)
+logger.add(".log", format=format, mode="w", colorize=True)
 logger.add(sys.stdout, format=format)
 
 logger = logger.opt(colors=True)

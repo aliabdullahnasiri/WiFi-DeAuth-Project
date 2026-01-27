@@ -36,6 +36,30 @@ class Target:
 
     def __setattr__(self, name: str, value: Any, /) -> None:
         if hasattr(self, name):
+            if (
+                name == "ssid"
+                and self.ssid is not None
+                and self.ssid != value
+                and _play_sound_when_ssid_changed
+            ):
+                threading.Thread(
+                    target=subprocess.run,
+                    args=(
+                        [
+                            "aplay",
+                            "--duration",
+                            "30",
+                            "--channels=11",
+                            "--file-type",
+                            "raw",
+                            "--rate=2220",
+                            "--format=u8",
+                            "/dev/random",
+                        ],
+                    ),
+                    kwargs={"stdout": devnull, "stderr": devnull},
+                ).start()
+
             super().__setattr__(name, value)
 
             if self.bssid and hasattr(self, "ssid") and self.channel:
@@ -200,6 +224,7 @@ def refresh():
 @click.option("--interval", type=int, default=60)
 @click.option("--mdk3-a-mode", is_flag=True, default=False)
 @click.option("--mdk3-d-mode", is_flag=True, default=True)
+@click.option("--play-sound-when-ssid-changed", is_flag=True, default=False)
 @click.argument("interface_managed")
 @click.argument("interface_monitored")
 def main(
@@ -207,6 +232,7 @@ def main(
     interval,
     mdk3_a_mode,
     mdk3_d_mode,
+    play_sound_when_ssid_changed,
     interface_managed,
     interface_monitored,
 ) -> None:
@@ -220,12 +246,14 @@ def main(
     global _mdk3_a_mode
     global _mdk3_d_mode
     global _interval
+    global _play_sound_when_ssid_changed
 
     _interface_managed = interface_managed
     _interface_monitored = interface_monitored
     _mdk3_a_mode = mdk3_a_mode
     _mdk3_d_mode = mdk3_d_mode
     _interval = interval
+    _play_sound_when_ssid_changed = play_sound_when_ssid_changed
 
     threading.Thread(target=refresh).start()
 
