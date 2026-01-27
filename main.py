@@ -74,23 +74,18 @@ class Target:
                     stdout=devnull,
                 )
 
-                logger.info(f"Starting the <b>airodump-ng</b> sub process...")
+                logger.info(f"Change the channel to <cyan>{self.channel!r}</cyan>.")
                 threading.Thread(
                     target=subprocess.run,
                     args=(
                         [
                             "sudo",
-                            "airodump-ng",
-                            "--wps",
-                            "--uptime",
-                            "--gpsd",
-                            "--manufacturer",
-                            "--ignore-negative-one",
-                            "--bssid",
-                            f"{self.bssid}",
-                            "--channel",
+                            "iw",
+                            "dev",
+                            f"{_interface_monitored}",
+                            "set",
+                            "channel",
                             f"{self.channel}",
-                            _interface_monitored,
                         ],
                     ),
                     kwargs={"stdout": devnull, "stderr": devnull},
