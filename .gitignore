@@ -2,3 +2,5 @@ client.deny
 client.allow
 
 .log
+
+__pycache__/
