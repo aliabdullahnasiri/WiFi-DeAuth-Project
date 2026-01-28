@@ -3,13 +3,21 @@ import re
 import subprocess
 import threading
 from time import sleep
-from typing import Any, Literal
+from typing import Any, List, Literal
 
 import click
+from rich.console import Console
+from rich.panel import Panel
+from rich.table import Table
+from rich.traceback import install
 
 from logger import logger
 
 devnull = open(os.devnull, "wt")
+
+console: Console = Console()
+
+install()
 
 
 def change_interface_status(interface: str, status: Literal["up", "down"]):
@@ -30,6 +38,7 @@ def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
         stderr=devnull,
         stdout=devnull,
     )
+
     change_interface_status(_interface, "up")
 
     return p.returncode
@@ -127,13 +136,21 @@ class Target:
                             "-m",
                         ],
                     ),
-                    kwargs={"stdout": devnull, "stderr": devnull},
+                    kwargs={
+                        "capture_output": True,
+                        "text": True,
+                        "check": False,
+                    },
                 ).start()
 
                 threading.Thread(
                     target=subprocess.run,
                     args=(["sudo", "mdk3", _interface, "d"],),
-                    kwargs={"stdout": devnull, "stderr": devnull},
+                    kwargs={
+                        "capture_output": True,
+                        "text": True,
+                        "check": False,
+                    },
                 ).start()
 
         return super().__setattr__(name, value)
@@ -197,6 +214,32 @@ def refresh():
 
         dct = dict(lst)
 
+        table: Table = Table()
+
+        cols: List[str] = ["BSSID", "SSID", "CHANNEL"]
+
+        for col in cols:
+            table.add_column(col)
+
+        table.header_style = "bold"
+        table.border_style = "white"
+
+        for bssid, vals in dct.items():
+            channel, ssid = vals
+
+            table.add_row(
+                *map(
+                    str,
+                    [
+                        f"[bold]{bssid.upper()}[/]",
+                        ssid,
+                        f"[bold cyan]{channel}[/]",
+                    ],
+                )
+            )
+
+        console.print(table)
+
         if Target.obj is not None and (target := dct.get(Target.obj.bssid)):
             channel, ssid = target
             if channel:
@@ -208,7 +251,7 @@ def refresh():
                 logger.info(f"Sleep {_interval} for seconds.")
                 sleep(_interval)
 
-        sleep(30)
+        sleep(2.5)
 
 
 @click.command()
