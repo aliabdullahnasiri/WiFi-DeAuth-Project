@@ -297,7 +297,7 @@ def refresh():
                 logger.info(f"Sleep {_interval} for seconds.")
                 sleep(_interval)
 
-        time.sleep(0.5)
+        time.sleep(1.5)
 
 
 @click.command()
