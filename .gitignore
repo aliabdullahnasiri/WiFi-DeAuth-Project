@@ -2,10 +2,7 @@ __pycache__/
 bin/
 lib/
 
-audio.mp3
 pyvenv.cfg
-client.deny
-client.allow
 .log
 .env
 
