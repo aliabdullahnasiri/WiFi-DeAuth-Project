@@ -45,7 +45,11 @@ def check_interface(func: Callable):
     return wrapper
 
 
-def sleep(seconds: float, /):
+def sleep(
+    seconds: float,
+    /,
+    simple: bool = False,
+):
     cols = [
         SpinnerColumn(),
         BarColumn(),
@@ -54,7 +58,7 @@ def sleep(seconds: float, /):
     ]
 
     with Progress(
-        *cols,
+        *(cols if not simple else cols[:1]),
         transient=False,
     ) as progress:
         task = progress.add_task("[green]Processing", total=seconds)
