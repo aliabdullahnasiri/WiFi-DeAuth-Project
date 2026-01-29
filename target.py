@@ -70,7 +70,7 @@ class Target(object):
 
     @ssid.setter
     def ssid(self, value):
-        if self.ssid and self.ssid != value:
+        if self.ssid and value and self.ssid != value:
             self.play()
 
         self._ssid = value
@@ -81,7 +81,9 @@ class Target(object):
         if network := networks.get(self.bssid):
             self.channel, self.ssid, self.power = network
 
-            logger.info(f"Target was found on {self.channel!r} channel.")
+            logger.info(
+                f"Target <b>{self.ssid} ({self.bssid})</b> was found on {self.channel!r} channel."
+            )
             console.print(
                 Panel.fit(
                     f"{self!s}",
