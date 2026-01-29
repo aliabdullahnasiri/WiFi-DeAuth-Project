@@ -74,42 +74,45 @@ def kill(name: str):
 
 
 @check_interface
-def mdk3(interface: str, bssid: str, channel: int) -> None:
+def mdk3(interface: str, bssid: str, channel: int, mode: int = 2) -> None:
     kill("mdk3")
     change_interface_type(interface, "monitor")
     change_interface_channel(interface, channel)
 
     logger.info("Starting the <b>mdk3</b> sub processe(s)...")
-    threading.Thread(
-        target=subprocess.run,
-        args=(
-            [
-                "sudo",
-                "mdk3",
-                interface,
-                "a",
-                "-a",
-                bssid,
-                "-c",
-                "-m",
-            ],
-        ),
-        kwargs={
-            "capture_output": True,
-            "text": True,
-            "check": False,
-        },
-    ).start()
 
-    threading.Thread(
-        target=subprocess.run,
-        args=(["sudo", "mdk3", interface, "d"],),
-        kwargs={
-            "capture_output": True,
-            "text": True,
-            "check": False,
-        },
-    ).start()
+    if mode > 0:
+        threading.Thread(
+            target=subprocess.run,
+            args=(["sudo", "mdk3", interface, "d"],),
+            kwargs={
+                "capture_output": True,
+                "text": True,
+                "check": False,
+            },
+        ).start()
+
+    if mode > 1:
+        threading.Thread(
+            target=subprocess.run,
+            args=(
+                [
+                    "sudo",
+                    "mdk3",
+                    interface,
+                    "a",
+                    "-a",
+                    bssid,
+                    "-c",
+                    "-m",
+                ],
+            ),
+            kwargs={
+                "capture_output": True,
+                "text": True,
+                "check": False,
+            },
+        ).start()
 
 
 @check_interface
