@@ -195,12 +195,10 @@ def change_interface_channel(interface: str, channel: int):
     return p.returncode
 
 
-def play(): ...
-
-
 @check_interface
 def get_networks(interface: str):
     change_interface_type(interface, "managed")
+    change_interface_status(interface, "up")
 
     logger.debug("Scanning for around wireless networks...")
     process = subprocess.run(
