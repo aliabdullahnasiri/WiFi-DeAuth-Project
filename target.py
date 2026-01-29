@@ -96,7 +96,7 @@ class Target(object):
         else:
             self.ssid = self.power = self.channel = None
 
-            logger.info("Target was not found!!!")
+            logger.info("The target was not found!!!")
             print_table(console, networks)
 
         return 0
