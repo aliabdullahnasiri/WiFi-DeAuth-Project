@@ -64,15 +64,18 @@ def sleep(seconds: float, /):
             time.sleep(0.2)
 
 
-@check_interface
-def mdk3(interface: str, bssid: str, channel: int) -> None:
+def kill(name: str):
     logger.info("Killing previous mdk3 processes...")
     subprocess.run(
-        ["sudo", "pkill", "-9", "mdk3"],
+        ["sudo", "pkill", "-9", name],
         capture_output=True,
         text=True,
     )
 
+
+@check_interface
+def mdk3(interface: str, bssid: str, channel: int) -> None:
+    kill("mdk3")
     change_interface_type(interface, "monitor")
     change_interface_channel(interface, channel)
 

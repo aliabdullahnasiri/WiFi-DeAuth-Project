@@ -12,7 +12,7 @@ from rich.panel import Panel
 from rich.traceback import install
 
 from console import console
-from func import get_networks, mdk3, print_table, sleep
+from func import get_networks, kill, mdk3, print_table, sleep
 from logger import logger
 
 load_dotenv()
@@ -105,6 +105,7 @@ class Target(object):
                 mdk3(self.interface, self.bssid, self.channel)
 
                 sleep(self.interval)
+                kill("mdk3")
             else:
                 time.sleep(2.5)
 
