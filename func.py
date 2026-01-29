@@ -21,8 +21,7 @@ devnull = open(os.devnull, "wt")
 
 
 def check_interface(func: Callable):
-    wraps(func)
-
+    @wraps(func)
     def wrapper(interface: str, *args, **kwargs) -> Any:
         p = subprocess.run(
             [
@@ -97,7 +96,7 @@ def mdk3(interface: str, bssid: str, channel: int) -> None:
             "text": True,
             "check": False,
         },
-    )
+    ).start()
 
     threading.Thread(
         target=subprocess.run,
