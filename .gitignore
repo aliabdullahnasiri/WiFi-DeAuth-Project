@@ -1,9 +1,9 @@
-client.deny
-client.allow
-
-.log
-
 __pycache__/
 bin/
 lib/
+
 pyvenv.cfg
+client.deny
+client.allow
+.log
+.env
