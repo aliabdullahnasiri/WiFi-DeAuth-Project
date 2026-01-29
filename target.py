@@ -106,8 +106,9 @@ class Target(object):
 
                 sleep(self.interval)
                 kill("mdk3")
-            else:
-                sleep(2.5, simple=True)
+                continue
+
+            sleep(self.interval / 2, simple=True)
 
     def start(self: Self):
         pass
