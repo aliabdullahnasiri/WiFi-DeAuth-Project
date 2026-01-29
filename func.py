@@ -259,6 +259,9 @@ def get_networks(interface: str):
 
     dct = dict(lst)
 
+    if not len(dct):
+        logger.debug("No access point was found!!!")
+
     return dct
 
 
