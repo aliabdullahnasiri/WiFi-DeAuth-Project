@@ -20,31 +20,6 @@ from logger import logger
 devnull = open(os.devnull, "wt")
 
 
-def check_interface(func: Callable):
-    @wraps(func)
-    def wrapper(interface: str, *args, **kwargs) -> Any:
-        p = subprocess.run(
-            [
-                "sudo",
-                "ip",
-                "link",
-                "show",
-                "dev",
-                interface,
-            ],
-            capture_output=True,
-            text=True,
-        )
-
-        if p.returncode:
-            logger.error(p.stderr)
-            exit(1)
-
-        return func(interface, *args, **kwargs)
-
-    return wrapper
-
-
 def sleep(
     seconds: float,
     /,
@@ -68,6 +43,36 @@ def sleep(
             time.sleep(0.2)
 
 
+def check_interface(timeout: int = 5):
+    def inner(func: Callable):
+        @wraps(func)
+        def wrapper(interface: str, *args, **kwargs) -> Any:
+            p = subprocess.run(
+                [
+                    "sudo",
+                    "ip",
+                    "link",
+                    "show",
+                    "dev",
+                    interface,
+                ],
+                capture_output=True,
+                text=True,
+            )
+
+            if p.returncode:
+                logger.error(p.stderr)
+                sleep(timeout, simple=True)
+
+                return wrapper(interface, *args, **kwargs)
+
+            return func(interface, *args, **kwargs)
+
+        return wrapper
+
+    return inner
+
+
 def kill(name: str):
     logger.info("Killing previous mdk3 processes...")
     subprocess.run(
@@ -77,7 +82,7 @@ def kill(name: str):
     )
 
 
-@check_interface
+@check_interface()
 def mdk3(interface: str, bssid: str, channel: int, mode: int = 2) -> None:
     kill("mdk3")
     change_interface_type(interface, "monitor")
@@ -119,7 +124,7 @@ def mdk3(interface: str, bssid: str, channel: int, mode: int = 2) -> None:
         ).start()
 
 
-@check_interface
+@check_interface()
 def change_interface_status(interface: str, status: Literal["up", "down"]):
     if (
         (
@@ -151,7 +156,7 @@ def change_interface_status(interface: str, status: Literal["up", "down"]):
     return p.returncode
 
 
-@check_interface
+@check_interface()
 def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
     if (
         _type
@@ -181,7 +186,7 @@ def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
     return p.returncode
 
 
-@check_interface
+@check_interface()
 def change_interface_channel(interface: str, channel: int):
     change_interface_type(interface, "monitor")
     change_interface_status(interface, "up")
@@ -204,7 +209,7 @@ def change_interface_channel(interface: str, channel: int):
     return p.returncode
 
 
-@check_interface
+@check_interface()
 def get_networks(interface: str):
     change_interface_type(interface, "managed")
     change_interface_status(interface, "up")
