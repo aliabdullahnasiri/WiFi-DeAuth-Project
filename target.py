@@ -9,8 +9,9 @@ import playsound
 from rich.panel import Panel
 from rich.traceback import install
 
+from config import Config
 from console import console
-from func import get_networks, mdk3, print_table, sleep
+from func import get_networks, mdk3, notify, print_table, sleep
 from logger import logger
 
 
@@ -46,7 +47,7 @@ class Target(object):
                 logger.error(err)
 
     def __repr__(self) -> str:
-        return f"<{__name__}.Target bssid={self.bssid!r} ssid={self.ssid!r} channel={self.channel!r} power={self.power!r} object at 0x{id(self):x}>"
+        return f"<{__name__}.Target BSSID={self.bssid!r} SSID={self.ssid!r} CHANNEL={self.channel!r} POWER={self.power!r} object at 0x{id(self):x}>"
 
     @property
     def bssid(self: Self) -> str:
@@ -73,6 +74,7 @@ class Target(object):
     @ssid.setter
     def ssid(self, value):
         if self.ssid and value and self.ssid != value:
+            notify("Target router SSID changed — reset suspected.")
             self.play()
 
         self._ssid = value
@@ -84,7 +86,7 @@ class Target(object):
             self.channel, self.ssid, self.power = network
 
             logger.info(
-                f"Target <b>{self.ssid} ({self.bssid})</b> was found on {self.channel!r} channel."
+                f"Target detected: SSID='{self.ssid}' BSSID={self.bssid} on channel {self.channel}"
             )
             console.print(
                 Panel.fit(
@@ -98,7 +100,7 @@ class Target(object):
         else:
             self.ssid = self.power = self.channel = None
 
-            logger.info("The target was not found!!!")
+            logger.info("Target not detected.")
             print_table(console, networks)
 
         return 0
@@ -124,7 +126,7 @@ class Target(object):
         pass
 
     def play(self: Self):
-        if sound := os.getenv("SOUND"):
+        if sound := Config.SOUND:
             threading.Thread(target=playsound.playsound, args=(sound,)).start()
 
 
