@@ -4,8 +4,9 @@ import subprocess
 import threading
 import time
 from functools import wraps
-from typing import Any, Callable, List, Literal
+from typing import Any, Callable, List, Literal, Union
 
+import click
 from rich.progress import (
     BarColumn,
     Progress,
@@ -83,7 +84,14 @@ def kill(name: str):
 
 
 @check_interface()
-def mdk3(interface: str, bssid: str, channel: int, mode: int = 2) -> None:
+def mdk3(
+    interface: str,
+    bssid: str,
+    channel: int,
+    mode: int = 2,
+    whitelist: Union[click.File, None] = None,
+    blacklist: Union[click.File, None] = None,
+) -> None:
     kill("mdk3")
 
     change_interface_type(interface, "monitor")
@@ -92,9 +100,17 @@ def mdk3(interface: str, bssid: str, channel: int, mode: int = 2) -> None:
     logger.info("Starting the <b>mdk3</b> sub processe(s)...")
 
     if mode > 0:
+        cmd = ["sudo", "mdk3", interface, "d"]
+
+        if whitelist:
+            cmd.extend(["-w", whitelist.name])
+
+        if blacklist:
+            cmd.extend(["-b", blacklist.name])
+
         threading.Thread(
             target=subprocess.run,
-            args=(["sudo", "mdk3", interface, "d"],),
+            args=(cmd,),
             kwargs={
                 "capture_output": True,
                 "text": True,
