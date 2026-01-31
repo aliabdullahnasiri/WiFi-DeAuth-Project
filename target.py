@@ -92,13 +92,6 @@ class Target(object):
                 msg := f"Target detected: SSID={self.ssid!r} BSSID={self.bssid!r} on channel {self.channel!r}"
             )
             notify(msg)
-            console.print(
-                Panel.fit(
-                    f"{self!s}",
-                    title="TARGET WAS FOUND!!!",
-                    highlight=True,
-                )
-            )
 
             return 1
         else:
