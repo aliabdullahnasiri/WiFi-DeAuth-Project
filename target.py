@@ -64,6 +64,9 @@ class Target(object):
 
     @channel.setter
     def channel(self, ch):
+        if self.channel and ch and self.channel != ch:
+            notify(f"Target channel changed → CH {self.channel} → {ch}")
+
         self._channel = ch
 
     @property
