@@ -11,7 +11,7 @@ from rich.panel import Panel
 from rich.traceback import install
 
 from console import console
-from func import get_networks, kill, mdk3, print_table, sleep
+from func import get_networks, mdk3, print_table, sleep
 from logger import logger
 
 load_dotenv()
@@ -24,11 +24,17 @@ class Target(object):
         interface: str,
         bssid: str,
         /,
+        whitelist: Union[click.File, None] = None,
+        blacklist: Union[click.File, None] = None,
+        mode: int = 2,
         interval: int = 30,
         debug: bool = False,
     ) -> None:
         self.interface = interface
         self.bssid = bssid.lower()
+        self.whitelist = whitelist
+        self.blacklist = blacklist
+        self.mode = mode
         self.interval = interval
         self.debug = debug
 
@@ -103,10 +109,16 @@ class Target(object):
     def attack(self: Self) -> NoReturn:
         while True:
             if self.find():
-                mdk3(self.interface, self.bssid, self.channel)
-
+                mdk3(
+                    self.interface,
+                    self.bssid,
+                    self.channel,
+                    self.mode,
+                    self.whitelist,
+                    self.blacklist,
+                )
                 sleep(self.interval)
-                kill("mdk3")
+
                 continue
 
             sleep(self.interval / 2, simple=True)
@@ -121,11 +133,41 @@ class Target(object):
 
 @click.command()
 @click.option("--bssid", type=str, required=True, help="Specify the target BSSID.")
+@click.option(
+    "--whitelist",
+    type=click.File(),
+    help="Read file containing MACs not to care about (Whitelist Mode).",
+)
+@click.option(
+    "--blacklist",
+    type=click.File(),
+    help="Read file containing MACs to run tests on (Blacklist Mode).",
+)
+@click.option("--mode", type=int, default=2)
 @click.option("--interval", type=int, default=60)
 @click.option("--debug", is_flag=True, default=False)
 @click.argument("interface")
-def main(bssid: str, interval: int, debug: bool, interface: str) -> None:
-    target: Target = Target(interface, bssid, interval=interval, debug=debug)
+def main(
+    bssid: str,
+    whitelist: click.File,
+    blacklist: click.File,
+    mode: int,
+    interval: int,
+    debug: bool,
+    interface: str,
+) -> None:
+    if debug:
+        pass
+
+    target: Target = Target(
+        interface,
+        bssid,
+        whitelist=whitelist,
+        blacklist=blacklist,
+        mode=mode,
+        interval=interval,
+        debug=debug,
+    )
 
     target.attack()
 
