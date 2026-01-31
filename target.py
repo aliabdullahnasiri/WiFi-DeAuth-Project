@@ -6,15 +6,12 @@ from typing import Any, NoReturn, Self, Union
 
 import click
 import playsound
-from dotenv import load_dotenv
 from rich.panel import Panel
 from rich.traceback import install
 
 from console import console
 from func import get_networks, mdk3, print_table, sleep
 from logger import logger
-
-load_dotenv()
 
 
 class Target(object):
