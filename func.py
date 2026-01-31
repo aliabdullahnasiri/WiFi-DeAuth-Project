@@ -223,8 +223,11 @@ def get_networks(interface: str):
         lst.append(item)
 
     dct = dict(lst)
+
     if not dct:
-        logger.warning("No wireless access points detected during scan.")
+        logger.warning(_ := "No wireless access points detected during scan.")
+        notify(_)
+
     return dct
 
 

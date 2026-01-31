@@ -89,16 +89,16 @@ class Target(object):
             self.channel, self.ssid, self.power = network
 
             logger.info(
-                msg := f"Target detected: SSID={self.ssid!r} BSSID={self.bssid!r} on channel {self.channel!r}"
+                _ := f"Target detected: SSID={self.ssid!r} BSSID={self.bssid!r} on channel {self.channel!r}"
             )
-            notify(msg)
+            notify(_)
 
             return 1
-        else:
-            self.ssid = self.power = self.channel = None
 
-            logger.info("Target not detected.")
-            print_table(console, networks)
+        self.ssid = self.power = self.channel = None
+
+        logger.info(_ := "Target not detected.")
+        notify(_)
 
         return 0
 
