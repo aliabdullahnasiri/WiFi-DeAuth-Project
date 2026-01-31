@@ -7,6 +7,7 @@ from functools import wraps
 from typing import Any, Callable, List, Literal, Union
 
 import click
+import paho.mqtt.publish as publish
 from rich.progress import (
     BarColumn,
     Progress,
@@ -16,6 +17,7 @@ from rich.progress import (
 )
 from rich.table import Table
 
+from config import Config
 from logger import logger
 
 devnull = open(os.devnull, "wt")
@@ -323,3 +325,23 @@ def print_table(console, dct):
         console.print(table)
     except Exception as err:
         console.print(err)
+
+
+def notify(payload):
+    publish.single(
+        topic=Config.TOPIC,
+        payload=payload,
+        hostname=Config.BROKER_IP,
+        auth={
+            "username": Config.USERNAME,
+            "password": Config.PASSWORD,
+        },
+    )
+
+
+def main() -> None:
+    pass
+
+
+if __name__ == "__main__":
+    main()
