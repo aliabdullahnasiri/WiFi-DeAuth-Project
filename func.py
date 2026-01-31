@@ -85,6 +85,7 @@ def kill(name: str):
 @check_interface()
 def mdk3(interface: str, bssid: str, channel: int, mode: int = 2) -> None:
     kill("mdk3")
+
     change_interface_type(interface, "monitor")
     change_interface_channel(interface, channel)
 
