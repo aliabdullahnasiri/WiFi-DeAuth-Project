@@ -89,8 +89,9 @@ class Target(object):
             self.channel, self.ssid, self.power = network
 
             logger.info(
-                f"Target detected: SSID='{self.ssid}' BSSID={self.bssid} on channel {self.channel}"
+                msg := f"Target detected: SSID={self.ssid!r} BSSID={self.bssid!r} on channel {self.channel!r}"
             )
+            notify(msg)
             console.print(
                 Panel.fit(
                     f"{self!s}",
