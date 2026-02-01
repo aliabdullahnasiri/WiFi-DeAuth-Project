@@ -8,7 +8,7 @@ import playsound
 from rich.traceback import install
 
 from config import Config
-from func import get_networks, mdk3, notify, sleep
+from func import get_networks, kill, mdk3, notify, sleep
 from logger import logger
 
 
@@ -101,6 +101,8 @@ class Target(object):
 
     def attack(self: Self) -> NoReturn:
         while True:
+            kill("mdk3")
+
             if self.find():
                 mdk3(
                     self.interface,
