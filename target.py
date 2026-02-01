@@ -1,17 +1,14 @@
 from __future__ import annotations
 
-import os
 import threading
 from typing import Any, NoReturn, Self, Union
 
 import click
 import playsound
-from rich.panel import Panel
 from rich.traceback import install
 
 from config import Config
-from console import console
-from func import get_networks, mdk3, notify, print_table, sleep
+from func import get_networks, mdk3, notify, sleep
 from logger import logger
 
 
