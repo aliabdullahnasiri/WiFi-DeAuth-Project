@@ -4,7 +4,7 @@ import subprocess
 import threading
 import time
 from functools import wraps
-from typing import Any, Callable, List, Literal, Union
+from typing import Any, Callable, Literal, Union
 
 import click
 import paho.mqtt.publish as publish
@@ -15,7 +15,6 @@ from rich.progress import (
     TimeElapsedColumn,
     TimeRemainingColumn,
 )
-from rich.table import Table
 
 from config import Config
 from logger import logger
@@ -229,34 +228,6 @@ def get_networks(interface: str):
         notify(_)
 
     return dct
-
-
-def print_table(console, dct):
-    try:
-        table: Table = Table()
-        cols: List[str] = ["No", "BSSID", "SSID", "CH", "SIGNAL"]
-        for col in cols:
-            table.add_column(col)
-
-        table.header_style = "bold"
-        table.border_style = "white"
-
-        for index, (bssid, vals) in enumerate(
-            sorted(dct.items(), key=lambda item: item[-1][-1])
-        ):
-            channel, ssid, signal = vals
-            table.add_row(
-                str(index + 1),
-                f"[bold]{bssid.upper()}[/]",
-                ssid,
-                f"[bold cyan]{channel}[/]",
-                f"[bold italic]{signal}[/]",
-            )
-
-        console.print(table)
-    except Exception as err:
-        logger.exception(f"Failed to render network table: {err}")
-        console.print("[red]Error displaying network table[/red]")
 
 
 def notify(payload):
