@@ -17,6 +17,7 @@ from rich.progress import (
 )
 
 from config import Config
+from console import console
 from logger import logger
 
 devnull = open(os.devnull, "wt")
@@ -230,13 +231,20 @@ def get_networks(interface: str):
     return dct
 
 
-def notify(payload):
-    publish.single(
-        topic=Config.TOPIC,
-        payload=payload,
-        hostname=Config.BROKER_IP,
-        auth={"username": Config.USERNAME, "password": Config.PASSWORD},
-    )
+def notify(payload) -> int:
+    try:
+        publish.single(
+            topic=Config.TOPIC,
+            payload=payload,
+            hostname=Config.BROKER_IP,
+            auth={"username": Config.USERNAME, "password": Config.PASSWORD},
+        )
+
+        return 0
+    except ConnectionRefusedError as err:
+        console.print(rf"ERROR: {err}")
+
+    return 1
 
 
 def main() -> None:
