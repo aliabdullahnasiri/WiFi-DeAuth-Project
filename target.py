@@ -62,9 +62,19 @@ class Target(object):
     @channel.setter
     def channel(self, ch):
         if self.channel and ch and self.channel != ch:
-            notify(f"Target channel changed → CH {self.channel} → {ch}")
+            logger.info(_ := f"Target channel changed → CH {self.channel} → {ch}")
+            notify(_)
 
         self._channel = ch
+
+    @property
+    def rsn(self):
+        if hasattr(self, "_rsn"):
+            return self._rsn
+
+    @rsn.setter
+    def rsn(self, value):
+        self._rsn = value
 
     @property
     def ssid(self):
@@ -74,7 +84,9 @@ class Target(object):
     @ssid.setter
     def ssid(self, value):
         if self.ssid and value and self.ssid != value:
-            notify("Target router SSID changed — reset suspected.")
+            logger.info(_ := "Target router SSID changed — reset suspected.")
+            notify(_)
+
             self.play()
 
         self._ssid = value
@@ -83,7 +95,7 @@ class Target(object):
         networks = get_networks(self.interface)
 
         if network := networks.get(self.bssid):
-            self.channel, self.ssid, self.power = network
+            self.channel, self.ssid, self.power, self.rsn = network
 
             logger.info(
                 _ := f"Target detected: SSID={self.ssid!r} BSSID={self.bssid!r} on channel {self.channel!r}"
@@ -92,7 +104,7 @@ class Target(object):
 
             return 1
 
-        self.ssid = self.power = self.channel = None
+        self.ssid = self.power = self.channel = self.rsn = None
 
         logger.info(_ := "Target not detected.")
         notify(_)
