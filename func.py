@@ -177,7 +177,10 @@ def get_networks(interface: str):
 
     logger.debug("Scanning for nearby wireless networks...")
     process = subprocess.run(
-        ["egrep", "^BSS|SSID:|signal:|channel:|set: channel"],
+        [
+            "egrep",
+            r"^BSS|SSID:|signal:|channel:|set: channel|RSN:|\*.Group.cipher:|\*.Pairwise.ciphers:|\*.Authentication.suites:",
+        ],
         capture_output=True,
         input=subprocess.run(
             ["sudo", "iw", "dev", interface, "scan"],
@@ -216,6 +219,41 @@ def get_networks(interface: str):
         if search := re.search("signal:.*", a):
             start, end = search.span()
             vals.append(re.sub("signal:.", "", a[start:end]))
+        else:
+            vals.append(None)
+
+        if re.search(r"RSN", a):
+            dct = {}
+
+            if search := re.search(_ := r"RSN:.*\*\ Version:.*", a):
+                start, end = search.span()
+                dct.setdefault("version", int(re.sub(_[:-2], "", a[start:end]).strip()))
+            else:
+                dct.setdefault("version", None)
+
+            if search := re.search(_ := r"\*.Group.cipher\:.*", a):
+                start, end = search.span()
+                dct.setdefault("group-cipher", re.sub(_[:-2], "", a[start:end]).strip())
+            else:
+                dct.setdefault("group-cipher", None)
+
+            if search := re.search(_ := r"\*.Pairwise.ciphers\:.*", a):
+                start, end = search.span()
+                dct.setdefault(
+                    "pairwise-ciphers", re.sub(_[:-2], "", a[start:end]).strip()
+                )
+            else:
+                dct.setdefault("pairwise-ciphers", None)
+
+            if search := re.search(_ := r"\*.Authentication.suites\:.*", a):
+                start, end = search.span()
+                dct.setdefault(
+                    "authentication-suites", re.sub(_[:-2], "", a[start:end]).strip()
+                )
+            else:
+                dct.setdefault("authentication-suites", None)
+
+            vals.append(dct)
         else:
             vals.append(None)
 
