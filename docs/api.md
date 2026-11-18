@@ -72,6 +72,8 @@ normal `AttributeError` semantics.
 
 ## Command entry point
 
+`target.cli()` installs Rich tracebacks and invokes `target.main`. It is used by
+both the installed `wifi-deauth` command and direct execution of `target.py`.
 `target.main` is decorated with Click. It constructs `Target` and immediately
 calls `attack()`. CLI defaults and option descriptions are listed in the
 [README](../README.md#command-interface). The CLI's `--debug` branch itself is a
