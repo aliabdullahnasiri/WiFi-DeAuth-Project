@@ -38,16 +38,19 @@ uv lock --check
 uv sync --locked --check
 uv run --locked python -m compileall -q config.py console.py func.py logger.py target.py
 uv run --locked wifi-deauth --help
+uv run --locked python -m unittest discover -s tests -v
 ```
 
 Compilation checks syntax. CLI help checks imports and Click registration, and
 does not enter the scan loop. It still initializes `.log` through module
 imports. These checks do not prove wireless, broker, or audio functionality.
 
-There is currently no automated regression test suite. Future unit tests should
-mock `subprocess.run`, MQTT publishing, sleeping, and audio playback. Useful
-cases include malformed scan output, a target disappearing between scans,
-channel and SSID transitions, and unavailable broker settings. Calling
+`tests/test_notify.py` covers missing and empty credentials, authenticated
+publishing, incomplete broker settings, and connection refusal. It replaces
+the Paho network client or publisher, so no broker or wireless adapter is used.
+Future tests of wireless operations should mock `subprocess.run`, sleeping,
+and audio playback. Useful cases include malformed scan output, a target
+disappearing between scans, and channel and SSID transitions. Calling
 `Target.attack()` directly enters an unbounded loop with real side effects.
 
 ## Troubleshooting existing behavior
