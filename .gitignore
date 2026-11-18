@@ -8,4 +8,7 @@ pyvenv.cfg
 
 .venv/
 .log.*
+*.egg-info/
+build/
+dist/
 
