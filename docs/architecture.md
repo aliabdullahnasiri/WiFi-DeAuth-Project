@@ -64,8 +64,11 @@ BSSID. It does not validate the BSSID format or normalize every scan field.
 
 `notify()` publishes one message through Paho MQTT using `Config.TOPIC`,
 `BROKER_IP`, `USERNAME`, and `PASSWORD`. It returns `0` on success and `1` for
-`ConnectionRefusedError`; other exceptions propagate. Callers ignore its return
-code. No empty-settings guard or notification-disable option exists.
+incomplete configuration or `ConnectionRefusedError`; other exceptions propagate.
+Callers ignore its return code. Missing or empty `BROKER_IP` or `TOPIC` skips
+publishing with a warning. Authentication is omitted when both credentials are
+absent or empty; a password without a username also skips publishing with a
+warning. There is no separate notification-disable option.
 
 Channel-change notifications require both old and new channels to be truthy
 and different. SSID-change notifications and optional sound similarly require
