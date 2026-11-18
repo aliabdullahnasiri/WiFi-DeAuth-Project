@@ -1,3 +1,9 @@
+"""Wireless subprocess helpers, scan parsing, progress output, and MQTT alerts.
+
+Interface operations invoke privileged Linux commands. Importing this module
+also configures logging and opens a process-lifetime handle to ``os.devnull``.
+"""
+
 import os
 import re
 import subprocess
@@ -24,6 +30,7 @@ devnull = open(os.devnull, "wt")
 
 
 def sleep(seconds: float, /, simple: bool = False):
+    """Wait approximately ``seconds`` with a Rich progress bar or spinner."""
     cols = [
         SpinnerColumn(),
         BarColumn(),
@@ -39,9 +46,16 @@ def sleep(seconds: float, /, simple: bool = False):
 
 
 def check_interface(timeout: int = 5):
+    """Decorate an interface-first function with recursive availability retries.
+
+    Each failed ``ip link show`` waits ``timeout`` seconds before trying again.
+    Retries have no limit and can eventually exhaust the Python call stack.
+    """
     def inner(func: Callable):
+        """Wrap ``func`` while preserving its name and documentation."""
         @wraps(func)
         def wrapper(interface: str, *args, **kwargs) -> Any:
+            """Check interface availability, then call ``func`` or retry."""
             p = subprocess.run(
                 ["sudo", "ip", "link", "show", "dev", interface],
                 capture_output=True,
@@ -64,6 +78,10 @@ def check_interface(timeout: int = 5):
 
 
 def kill(name: str):
+    """Run privileged ``pkill -9`` by name, without checking its exit status.
+
+    Matching processes are not restricted to those started by this project.
+    """
     logger.info(f"Terminating any running '{name}' processes...")
     subprocess.run(
         ["sudo", "pkill", "-9", name],
@@ -81,6 +99,13 @@ def mdk3(
     whitelist: Union[click.File, None] = None,
     blacklist: Union[click.File, None] = None,
 ) -> None:
+    """Configure the interface and launch existing mdk3 modes in threads.
+
+    Mode values above zero start deauthentication mode; values above one also
+    start authentication mode directed at ``bssid``. List files are passed to
+    deauthentication mode, which does not receive ``bssid`` as a target filter.
+    Even nonpositive modes stop matching processes and configure the interface.
+    """
     kill("mdk3")
 
     change_interface_type(interface, "monitor")
@@ -113,6 +138,7 @@ def mdk3(
 
 @check_interface()
 def change_interface_status(interface: str, status: Literal["up", "down"]):
+    """Set the link state and return zero or the ``ip`` command's exit code."""
     stdout = subprocess.run(
         ["sudo", "ip", "link", "show", "dev", interface],
         capture_output=True,
@@ -137,6 +163,7 @@ def change_interface_status(interface: str, status: Literal["up", "down"]):
 
 @check_interface()
 def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
+    """Set the wireless mode, cycling link state, and return the mode exit code."""
     if (
         _type
         in subprocess.run(
@@ -160,6 +187,7 @@ def change_interface_type(interface: str, _type: Literal["managed", "monitor"]):
 
 @check_interface()
 def change_interface_channel(interface: str, channel: int):
+    """Bring up monitor mode, select a channel, and return the ``iw`` exit code."""
     change_interface_type(interface, "monitor")
     change_interface_status(interface, "up")
 
@@ -172,6 +200,13 @@ def change_interface_channel(interface: str, channel: int):
 
 @check_interface()
 def get_networks(interface: str):
+    """Scan in managed mode and parse ``iw`` output into a BSSID mapping.
+
+    Values normally contain ``[channel, ssid, signal, rsn]``. Signal is a
+    string; RSN is a dictionary or ``None``. Missing channel data currently
+    produces a shorter list. An empty result triggers an MQTT notification.
+    Command failures are not distinguished from empty scan results.
+    """
     change_interface_type(interface, "managed")
     change_interface_status(interface, "up")
 
@@ -270,6 +305,11 @@ def get_networks(interface: str):
 
 
 def notify(payload) -> int:
+    """Publish one MQTT message using environment-backed broker settings.
+
+    Return zero on success or one for a refused connection. Other exceptions,
+    including invalid settings and DNS failures, propagate to the caller.
+    """
     try:
         publish.single(
             topic=Config.TOPIC,
@@ -286,6 +326,7 @@ def notify(payload) -> int:
 
 
 def main() -> None:
+    """Do nothing; helpers are consumed by the target module."""
     pass
 
 
