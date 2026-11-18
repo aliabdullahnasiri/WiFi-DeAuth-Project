@@ -4,13 +4,14 @@
 
 ## Environment and dependencies
 
-This is a script application with five top-level Python modules and no package
-build backend. Run commands from the repository root so local imports resolve.
+Setuptools packages the five top-level Python modules and registers the
+`wifi-deauth` command. Run commands from the repository root so `uv` selects
+this project's environment.
 Python 3.11 is the minimum because `target.py` imports `typing.Self`.
 
 ```sh
 uv sync --locked
-uv run --locked python target.py --help
+uv run --locked wifi-deauth --help
 ```
 
 `pyproject.toml` declares dependencies; `uv.lock` records their resolution.
@@ -36,7 +37,7 @@ intentional upgrade, use `uv lock --upgrade-package <package>`, then `uv sync
 uv lock --check
 uv sync --locked --check
 uv run --locked python -m compileall -q config.py console.py func.py logger.py target.py
-uv run --locked python target.py --help
+uv run --locked wifi-deauth --help
 ```
 
 Compilation checks syntax. CLI help checks imports and Click registration, and
