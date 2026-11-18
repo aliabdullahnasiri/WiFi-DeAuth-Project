@@ -42,7 +42,7 @@ From the repository root:
 ```sh
 uv sync --locked
 cp .env.example .env
-uv run --locked python target.py --help
+uv run --locked wifi-deauth --help
 ```
 
 Edit `.env` for your broker and optional sound file. The help command displays
@@ -75,8 +75,20 @@ ignored by Git; `.env.example` contains placeholders only.
 
 ## Command interface
 
-`target.py` is the entry point. Its required positional argument is `INTERFACE`.
-Use `uv run --locked python target.py --help` to inspect the command.
+`uv run wifi-deauth` starts the project command, which requires `INTERFACE` and
+`--bssid`. It loads configuration, logging, scanning, and notifications through
+the existing modules; those modules do not need to be started separately.
+Use `uv run --locked wifi-deauth --help` to inspect all options.
+
+The command syntax for an authorized lab session is:
+
+```text
+uv run --locked wifi-deauth INTERFACE --bssid BSSID [OPTIONS]
+```
+
+Replace `INTERFACE` and `BSSID` with your lab interface and access point
+identifier. The original `uv run --locked python target.py` entry point remains
+available with the same arguments.
 
 | Option | Default | Existing behavior |
 | --- | --- | --- |
