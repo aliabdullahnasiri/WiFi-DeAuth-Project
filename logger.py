@@ -1,3 +1,5 @@
+"""Configure Loguru output to stdout and a truncated ``.log`` file on import."""
+
 import sys
 
 from loguru import logger
