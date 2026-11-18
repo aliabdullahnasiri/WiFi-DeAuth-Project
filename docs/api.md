@@ -27,7 +27,7 @@ real privileged operations; importing `func` or `target` also configures logging
 | `change_interface_type(interface, _type)` | Requests `managed` or `monitor`; returns `0` when already set, otherwise the mode-setting command's exit code. |
 | `change_interface_channel(interface, channel)` | Ensures monitor mode and an up link, then returns the channel-setting command's exit code. |
 | `get_networks(interface)` | Returns a BSSID-to-list mapping parsed from scan output. Empty results also publish an MQTT alert. See the data shape and parsing limitations in the architecture guide. |
-| `notify(payload)` | Publishes one MQTT message; returns `0` on success or `1` on connection refusal. Other errors propagate. |
+| `notify(payload)` | Publishes one MQTT message; returns `0` on success or `1` on incomplete configuration or connection refusal. Uses anonymous publishing when both credentials are absent. Other errors propagate. |
 | `main()` | No-op placeholder. |
 
 The interface decorator applies to `mdk3`, all three interface-changing helpers,
