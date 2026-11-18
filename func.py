@@ -307,15 +307,31 @@ def get_networks(interface: str):
 def notify(payload) -> int:
     """Publish one MQTT message using environment-backed broker settings.
 
-    Return zero on success or one for a refused connection. Other exceptions,
-    including invalid settings and DNS failures, propagate to the caller.
+    Return zero on success or one for incomplete configuration or a refused
+    connection. Omit authentication when both credentials are absent. Other
+    errors, including DNS failures, propagate to the caller.
     """
+    topic = Config.TOPIC
+    hostname = Config.BROKER_IP
+    username = Config.USERNAME
+    password = Config.PASSWORD
+
+    if not hostname or not topic:
+        logger.warning("Skipping MQTT notification: set BROKER_IP and TOPIC.")
+        return 1
+
+    if password and not username:
+        logger.warning("Skipping MQTT notification: PASSWORD requires USERNAME.")
+        return 1
+
+    auth = {"username": username, "password": password} if username else None
+
     try:
         publish.single(
-            topic=Config.TOPIC,
+            topic=topic,
             payload=payload,
-            hostname=Config.BROKER_IP,
-            auth={"username": Config.USERNAME, "password": Config.PASSWORD},
+            hostname=hostname,
+            auth=auth,
         )
 
         return 0
