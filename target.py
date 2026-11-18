@@ -1,3 +1,9 @@
+"""Track a BSSID across repeated scans and orchestrate existing mdk3 processes.
+
+The Click entry point runs an indefinite loop with MQTT notifications and an
+optional sound when an already-known SSID changes.
+"""
+
 from __future__ import annotations
 
 import threading
@@ -13,6 +19,7 @@ from logger import logger
 
 
 class Target(object):
+    """Hold target observations and the settings for the scan/restart loop."""
 
     def __init__(
         self: Self,
@@ -25,6 +32,11 @@ class Target(object):
         interval: int = 30,
         debug: bool = False,
     ) -> None:
+        """Store options and lowercase the BSSID without starting operations.
+
+        ``interval`` defaults to 30 seconds here; the CLI defaults to 60.
+        Whitelist and blacklist are file objects passed through to mdk3.
+        """
         self.interface = interface
         self.bssid = bssid.lower()
         self.whitelist = whitelist
@@ -34,9 +46,11 @@ class Target(object):
         self.debug = debug
 
     def __setattr__(self, name: str, value: Any, /) -> None:
+        """Delegate assignment to the default object implementation."""
         return super().__setattr__(name, value)
 
     def __getattribute__(self, name: str, /) -> Any:
+        """Return attributes, logging missing ones in debug mode and returning None."""
         try:
             return super().__getattribute__(name)
         except AttributeError as err:
@@ -44,23 +58,28 @@ class Target(object):
                 logger.error(err)
 
     def __repr__(self) -> str:
+        """Describe the target using its most recently observed metadata."""
         return f"<{__name__}.Target BSSID={self.bssid!r} SSID={self.ssid!r} CHANNEL={self.channel!r} POWER={self.power!r} object at 0x{id(self):x}>"
 
     @property
     def bssid(self: Self) -> str:
+        """Return the stored access point identifier."""
         return self._bssid
 
     @bssid.setter
     def bssid(self: Self, value: str) -> None:
+        """Store a BSSID verbatim; only construction performs lowercasing."""
         self._bssid = value
 
     @property
     def channel(self) -> Union[int, None]:
+        """Return the most recently observed channel, or ``None``."""
         if hasattr(self, "_channel"):
             return self._channel
 
     @channel.setter
     def channel(self, ch):
+        """Notify when two known channels differ, then store the new channel."""
         if self.channel and ch and self.channel != ch:
             logger.info(_ := f"Target channel changed → CH {self.channel} → {ch}")
             notify(_)
@@ -69,20 +88,24 @@ class Target(object):
 
     @property
     def rsn(self):
+        """Return parsed Robust Security Network information, when available."""
         if hasattr(self, "_rsn"):
             return self._rsn
 
     @rsn.setter
     def rsn(self, value):
+        """Store the RSN mapping from the latest scan."""
         self._rsn = value
 
     @property
     def ssid(self):
+        """Return the most recently observed network name, or ``None``."""
         if hasattr(self, "_ssid"):
             return self._ssid
 
     @ssid.setter
     def ssid(self, value):
+        """Notify and play an optional sound when two known SSIDs differ."""
         if self.ssid and value and self.ssid != value:
             logger.info(_ := "Target router SSID changed — reset suspected.")
             notify(_)
@@ -92,6 +115,11 @@ class Target(object):
         self._ssid = value
 
     def find(self: Self) -> int:
+        """Scan once, update observations, notify, and return one if found.
+
+        Clear observations and return zero when the target is absent. Parsing
+        and notification errors propagate rather than becoming a zero result.
+        """
         networks = get_networks(self.interface)
 
         if network := networks.get(self.bssid):
@@ -112,6 +140,11 @@ class Target(object):
         return 0
 
     def attack(self: Self) -> NoReturn:
+        """Repeat process termination, scanning, launch, and an interval wait.
+
+        Missing targets cause a half-interval wait before another scan. The
+        loop has no shutdown cleanup for child processes or interface state.
+        """
         while True:
             kill("mdk3")
 
@@ -131,9 +164,11 @@ class Target(object):
             sleep(self.interval / 2, simple=True)
 
     def start(self: Self):
+        """Reserved placeholder; currently performs no action."""
         pass
 
     def play(self: Self):
+        """Play ``Config.SOUND`` in a new thread when a sound path is configured."""
         if sound := Config.SOUND:
             threading.Thread(target=playsound.playsound, args=(sound,)).start()
 
@@ -163,6 +198,7 @@ def main(
     debug: bool,
     interface: str,
 ) -> None:
+    """Run the scan/restart loop for INTERFACE using the supplied CLI options."""
     if debug:
         pass
 
