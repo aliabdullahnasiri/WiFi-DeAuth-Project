@@ -215,6 +215,11 @@ def main(
     target.attack()
 
 
-if __name__ == "__main__":
+def cli() -> None:
+    """Install Rich tracebacks and invoke the command from either entry point."""
     install()
     main()
+
+
+if __name__ == "__main__":
+    cli()

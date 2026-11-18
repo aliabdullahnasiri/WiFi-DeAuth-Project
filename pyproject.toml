@@ -15,3 +15,13 @@ dependencies = [
     "python-dotenv>=1.0,<2",
     "rich==13.7.1",
 ]
+
+[project.scripts]
+wifi-deauth = "target:cli"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["config", "console", "func", "logger", "target"]
