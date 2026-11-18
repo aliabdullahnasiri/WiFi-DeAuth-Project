@@ -31,8 +31,8 @@ project does not guarantee disruption of every wireless network.
   `mdk3`. These are supplied by the operating system, not by `uv`.
 - For wireless operation, an adapter and driver supporting the required managed
   and monitor modes, and permission to run the privileged commands.
-- A reachable MQTT broker and valid settings. Notifications are called during
-  normal operation and currently have no disable switch.
+- To receive notifications, a reachable MQTT broker and valid settings.
+  Notifications are skipped when `BROKER_IP` or `TOPIC` is missing or empty.
 - If sound is configured, a working audio backend for `playsound` on the host.
 
 ## Setup with uv
@@ -66,12 +66,17 @@ take precedence over `.env`; missing values become `None`, with no validation.
 | --- | --- |
 | `BROKER_IP` | MQTT broker hostname or address. |
 | `TOPIC` | MQTT topic for observations and change notifications. |
-| `USERNAME` | MQTT username; also check whether your shell already sets this name. |
-| `PASSWORD` | MQTT password. |
+| `USERNAME` | Optional MQTT username; also check whether your shell already sets this name. |
+| `PASSWORD` | Optional MQTT password; requires a nonempty `USERNAME`. |
 | `SOUND` | Optional audio file path; an empty value disables sound. |
 
 The current publisher does not expose broker port or TLS settings. `.env` is
 ignored by Git; `.env.example` contains placeholders only.
+
+For anonymous MQTT publishing, leave both `USERNAME` and `PASSWORD` empty.
+For a broker requiring authentication, supply its credentials. A password
+without a username skips the notification with a warning. Missing `BROKER_IP`
+or `TOPIC` also skips notifications with a warning instead of raising an error.
 
 ## Command interface
 
