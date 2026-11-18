@@ -76,8 +76,8 @@ An SSID change is logged as a suspected router reset; it is not proof of one.
 Loguru removes its existing sinks and adds stdout plus `.log` in write mode at
 module import. Each process therefore truncates the file. The file sink enables
 color formatting. There is no log rotation, retention policy, or CLI verbosity
-configuration. Rich traceback installation occurs when `target.py` runs as a
-script.
+configuration. `target.cli()` installs Rich tracebacks for both the
+`wifi-deauth` command and direct execution of `target.py`.
 
 ## Process and interface lifecycle
 
